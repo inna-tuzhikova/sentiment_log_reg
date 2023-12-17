@@ -2,6 +2,10 @@ import numpy as np
 from scipy import sparse
 
 
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1 / (1 + np.exp(-x))
+
+
 class LogisticRegression:
     def __init__(self):
         self.w = None
@@ -40,10 +44,11 @@ class LogisticRegression:
         num_train, dim = x.shape
         if self.w is None:
             # lazily initialize weights
-            self.w = np.random.randn(dim) * 0.01
+            self.w = np.random.randn(dim, 1) * 0.01
 
         # Run stochastic gradient descent to optimize W
         self.loss_history = []
+        idxs = np.arange(num_train)
         for it in range(num_iters):
             ###################################################################
             # TODO:
@@ -56,21 +61,22 @@ class LogisticRegression:
             # Hint: Use np.random.choice to generate indices. Sampling with
             # replacement is faster than sampling without replacement.
             ###################################################################
+            batch_idxs = np.random.choice(idxs, size=batch_size)
 
-
+            x_batch = x[batch_idxs]
+            y_batch = y[batch_idxs]
             #################################################################
             #                       END OF YOUR CODE
             #################################################################
-
-            # evaluate loss and gradient
-            loss, gradW = self.loss(X_batch, y_batch, reg)
+            # Evaluates loss and gradient
+            loss, grad = self.loss(x_batch, y_batch, reg)
             self.loss_history.append(loss)
-            # perform parameter update
+            # Performs parameter update
             #################################################################
             # TODO:
             # Update the weights using the gradient and the learning rate.
             #################################################################
-
+            self.w -= learning_rate * grad
             #################################################################
             #                       END OF YOUR CODE
             #################################################################
@@ -101,7 +107,8 @@ class LogisticRegression:
         # Implement this method. Store the probabilities of classes in y_proba.
         # Hint: It might be helpful to use np.vstack and np.sum
         #######################################################################
-
+        z = x @ self.w
+        y_proba = sigmoid(z)
         #######################################################################
         #                           END OF YOUR CODE
         #######################################################################
@@ -125,7 +132,7 @@ class LogisticRegression:
         # Implement this method. Store the predicted labels in y_pred.
         ######################################################################
         y_proba = self.predict_proba(x, append_bias=True)
-        y_pred = ...
+        y_pred = y_proba > 0.5
 
         ######################################################################
         #                           END OF YOUR CODE
@@ -144,8 +151,6 @@ class LogisticRegression:
             - loss as single float
             - gradient with respect to weights w; an array of same shape as w
         """
-        dw = np.zeros_like(self.w)  # initialize the gradient as zero
-        loss = 0
         # Compute loss and gradient. Your code should not contain python loops.
 
         # Right now the loss is a sum over all training examples, but we want it
@@ -154,8 +159,20 @@ class LogisticRegression:
 
         # Add regularization to the loss and gradient.
         # Note that you have to exclude bias term in regularization.
+        y_proba = self.predict_proba(x_batch, append_bias=False)
+        y_batch_reshaped = y_batch[:, np.newaxis]
+        loss = -(
+            y_batch_reshaped * np.log(y_proba)
+            + (1 - y_batch_reshaped) * np.log(1 - y_proba)
+        ).mean()
+        grad = (
+            x_batch
+            .multiply(y_proba - y_batch_reshaped)
+            .mean(axis=0)
+            .T
+        )
 
-        return loss, dw
+        return loss, grad
 
     @staticmethod
     def append_biases(x: np.ndarray):
