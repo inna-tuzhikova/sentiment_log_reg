@@ -139,13 +139,14 @@ class LogisticRegression:
         ######################################################################
         return y_pred
 
-    def loss(self, x_batch: np.ndarray, y_batch: np.ndarray, reg):
+    def loss(self, x_batch: np.ndarray, y_batch: np.ndarray, reg: float = 1e-3):
         """Logistic Regression loss function
 
         Args:
             x_batch: N x D array of data. Data are D-dimensional rows
             y_batch: 1-dimensional array of length N with labels 0-1, for 2
               classes
+            reg: regularization coefficient, L2 regularization is used
         Returns:
             a tuple of:
             - loss as single float
@@ -164,14 +165,13 @@ class LogisticRegression:
         loss = -(
             y_batch_reshaped * np.log(y_proba)
             + (1 - y_batch_reshaped) * np.log(1 - y_proba)
-        ).mean()
+        ).mean() + reg * np.sum(np.square(self.w[:-1]))
         grad = (
             x_batch
             .multiply(y_proba - y_batch_reshaped)
             .mean(axis=0)
             .T
-        )
-
+        ) + reg * np.vstack((2 * self.w[:-1], np.array([0])))
         return loss, grad
 
     @staticmethod
